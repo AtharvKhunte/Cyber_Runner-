@@ -1,4 +1,4 @@
-/* Game.module.css ─ Cyber-Runner UI */
+  /* Game.module.css ─ Cyber-Runner UI */
 
 /* ── Layout shell ──────────────────────────────────────────────── */
 .gameWrapper {
@@ -312,4 +312,108 @@
 @keyframes recordFlash {
   from { opacity: 0.7; }
   to   { opacity: 1;   }
+}
+
+.utilButtons {
+  position: absolute;
+  top: 8px; right: 12px;
+  z-index: 30;
+  display: flex;
+  gap: 6px;
+}
+
+.utilBtn {
+  background: rgba(5,10,20,0.75);
+  border: 1px solid rgba(0,255,231,0.2);
+  border-radius: 4px;
+  color: #00ffe7;
+  font-size: 15px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.utilBtn:hover, .utilBtn:focus-visible {
+  background: rgba(0,255,231,0.12);
+  border-color: rgba(0,255,231,0.55);
+  outline: none; transform: scale(1.08);
+}
+.utilBtn:active { transform: scale(0.94); }
+
+.hudCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.waveLabel {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: clamp(11px, 2vw, 15px);
+  color: #ff2d6b;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-shadow: 0 0 14px #ff2d6b;
+}
+
+.bossLabel {
+  color: #ffe600;
+  text-shadow: 0 0 18px #ffe600, 0 0 40px rgba(255,230,0,0.4);
+  animation: bossPulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes bossPulse {
+  from { opacity: 0.8; } to { opacity: 1; }
+}
+
+.waveBanner {
+  position: absolute;
+  top: 58px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(18px, 4vw, 30px);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #00ffe7;
+  text-shadow: 0 0 20px #00ffe7, 0 0 50px rgba(0,255,231,0.4);
+  pointer-events: none;
+  animation: bannerFade 0.4s ease-out both;
+  z-index: 15;
+  white-space: nowrap;
+}
+
+.bossBanner {
+  color: #ffe600;
+  text-shadow: 0 0 20px #ffe600, 0 0 50px rgba(255,230,0,0.4);
+}
+
+@keyframes bannerFade {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.fireBtn {
+  position: absolute;
+  bottom: 28px; right: 24px;
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,230,0,0.5);
+  background: rgba(5,10,20,0.82);
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 25;
+  box-shadow: 0 0 18px rgba(255,230,0,0.3);
+  display: none;
+  touch-action: none;
+  user-select: none;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .fireBtn { display: flex; }
+}
+
+.fireBtn:active {
+  background: rgba(255,230,0,0.2);
+  box-shadow: 0 0 30px rgba(255,230,0,0.6);
+  transform: scale(0.94);
 }

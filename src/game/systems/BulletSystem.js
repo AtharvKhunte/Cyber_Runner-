@@ -22,120 +22,88 @@
  * keep state leakage impossible.
  */
 
-export const BULLET_SPEED  = 520;   // px / s
-export const BULLET_RADIUS = 5;
-export const FIRE_COOLDOWN = 0.18;  // s  (~5.5 rounds/sec)
+export const BULLET_SPEED       = 520;
+export const BULLET_RADIUS      = 5;
+export const BASE_FIRE_COOLDOWN = 0.18;
 
-/* Neon yellow-white palette */
 const COLOR_CORE   = '#ffffff';
 const COLOR_MID    = '#ffe600';
 const COLOR_BLOOM  = '#ffaa00';
+const COLOR_TRIPLE = '#c060ff';
+const COLOR_TBLOOM = '#8020cc';
 
 export function makeBulletState() {
-  return {
-    bullets:  [],  // [{ x, y, px, py, vx, vy }]
-    cooldown: 0,
-  };
+  return { bullets: [], cooldown: 0 };
 }
 
-/**
- * updateBullets
- * @param {object}  bs
- * @param {boolean} firing
- * @param {number}  shipX
- * @param {number}  shipY
- * @param {number}  angle   — radians
- * @param {number}  dt      — seconds
- * @param {number}  W       — canvas logical width
- * @param {number}  H       — canvas logical height
- */
-export function updateBullets(bs, firing, shipX, shipY, angle, dt, W, H) {
+export function updateBullets(
+  bs, firing, shipX, shipY, angle, dt, W, H,
+  tripleShot = false, cooldown = BASE_FIRE_COOLDOWN
+) {
   bs.cooldown = Math.max(0, bs.cooldown - dt);
 
   if (firing && bs.cooldown === 0) {
-    bs.cooldown = FIRE_COOLDOWN;
-    bs.bullets.push({
-      x:  shipX,
-      y:  shipY,
-      px: shipX,
-      py: shipY,
-      vx: Math.cos(angle) * BULLET_SPEED,
-      vy: Math.sin(angle) * BULLET_SPEED,
-    });
+    bs.cooldown = cooldown;
+    if (tripleShot) {
+      const SPREAD = 0.22;
+      [-SPREAD, 0, SPREAD].forEach((offset) => {
+        const a = angle + offset;
+        bs.bullets.push({
+          x: shipX, y: shipY, px: shipX, py: shipY,
+          vx: Math.cos(a) * BULLET_SPEED,
+          vy: Math.sin(a) * BULLET_SPEED,
+          triple: true,
+        });
+      });
+    } else {
+      bs.bullets.push({
+        x: shipX, y: shipY, px: shipX, py: shipY,
+        vx: Math.cos(angle) * BULLET_SPEED,
+        vy: Math.sin(angle) * BULLET_SPEED,
+        triple: false,
+      });
+    }
   }
 
-  const MARGIN = 24;
+  const M = 24;
   bs.bullets = bs.bullets.filter((b) => {
     b.px = b.x; b.py = b.y;
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-    return b.x > -MARGIN && b.x < W + MARGIN &&
-           b.y > -MARGIN && b.y < H + MARGIN;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    return b.x > -M && b.x < W + M && b.y > -M && b.y < H + M;
   });
 }
 
-/**
- * drawBullets
- * Renders each bullet with a multi-layer neon glow + motion streak.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {Array}  bullets
- * @param {number} alpha  — sub-frame interpolation from useGameLoop
- */
 export function drawBullets(ctx, bullets, alpha) {
-  if (bullets.length === 0) return;
-
+  if (!bullets.length) return;
   for (const b of bullets) {
-    /* Interpolate position for silky 120Hz rendering */
     const x  = b.px + (b.x - b.px) * alpha;
     const y  = b.py + (b.y - b.py) * alpha;
-
-    /* Tail origin — a few px behind the interpolated point */
-    const tailAlpha = Math.max(0, alpha - 0.18);
-    const tx = b.px + (b.x - b.px) * tailAlpha;
-    const ty = b.py + (b.y - b.py) * tailAlpha;
+    const ta = Math.max(0, alpha - 0.18);
+    const tx = b.px + (b.x - b.px) * ta;
+    const ty = b.py + (b.y - b.py) * ta;
+    const mid   = b.triple ? COLOR_TRIPLE : COLOR_MID;
+    const bloom = b.triple ? COLOR_TBLOOM : COLOR_BLOOM;
 
     ctx.save();
-
-    /* ── Layer 1: Wide outer bloom ────────────────────────────── */
     ctx.globalAlpha = 0.18;
-    ctx.shadowColor = COLOR_BLOOM;
-    ctx.shadowBlur  = 40;
-    ctx.fillStyle   = COLOR_BLOOM;
-    ctx.beginPath();
-    ctx.arc(x, y, BULLET_RADIUS * 2.2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.shadowColor = bloom; ctx.shadowBlur = 40;
+    ctx.fillStyle   = bloom;
+    ctx.beginPath(); ctx.arc(x, y, BULLET_RADIUS * 2.2, 0, Math.PI * 2); ctx.fill();
 
-    /* ── Layer 2: Motion streak ───────────────────────────────── */
     ctx.globalAlpha = 0.55;
-    ctx.shadowColor = COLOR_MID;
-    ctx.shadowBlur  = 22;
-    ctx.strokeStyle = COLOR_MID;
-    ctx.lineWidth   = BULLET_RADIUS * 1.4;
-    ctx.lineCap     = 'round';
-    ctx.beginPath();
-    ctx.moveTo(tx, ty);
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    ctx.shadowColor = mid; ctx.shadowBlur = 22;
+    ctx.strokeStyle = mid; ctx.lineWidth  = BULLET_RADIUS * 1.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
 
-    /* ── Layer 3: Coloured core disc ──────────────────────────── */
     ctx.globalAlpha = 0.9;
-    ctx.shadowColor = COLOR_MID;
-    ctx.shadowBlur  = 10;
-    ctx.fillStyle   = COLOR_MID;
-    ctx.beginPath();
-    ctx.arc(x, y, BULLET_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.shadowColor = mid; ctx.shadowBlur = 10;
+    ctx.fillStyle   = mid;
+    ctx.beginPath(); ctx.arc(x, y, BULLET_RADIUS, 0, Math.PI * 2); ctx.fill();
 
-    /* ── Layer 4: White-hot centre ────────────────────────────── */
     ctx.globalAlpha = 1;
-    ctx.shadowColor = COLOR_CORE;
-    ctx.shadowBlur  = 6;
+    ctx.shadowColor = COLOR_CORE; ctx.shadowBlur = 6;
     ctx.fillStyle   = COLOR_CORE;
-    ctx.beginPath();
-    ctx.arc(x, y, BULLET_RADIUS * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.beginPath(); ctx.arc(x, y, BULLET_RADIUS * 0.45, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 }
