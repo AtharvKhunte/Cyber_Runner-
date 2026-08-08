@@ -26,14 +26,15 @@ export function maybeDropPickup(ps, x, y) {
   ps.pickups.push({ x, y, type, bobPhase: Math.random() * Math.PI * 2, radius: POWERUP_RADIUS });
 }
 
-export function updatePowerUps(ps, playerX, playerY, currentScore, dt) {
+// Change this one function — everything else stays the same
+export function updatePowerUps(ps, playerX, playerY, currentScore, dt, magnetRange = 1) {
   const result = { collected: [], nukeTriggered: false, extraScoreDelta: 0 };
 
   for (const p of ps.pickups) {
     p.bobPhase = (p.bobPhase + dt * 3) % (Math.PI * 2);
   }
 
-  const COLLECT_R = POWERUP_RADIUS + 14;
+  const COLLECT_R = (POWERUP_RADIUS + 14) * magnetRange;  // ← magnetRange applied here
   ps.pickups = ps.pickups.filter((p) => {
     const dist = Math.hypot(playerX - p.x, playerY - p.y);
     if (dist < COLLECT_R) {
