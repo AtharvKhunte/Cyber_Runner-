@@ -1,0 +1,315 @@
+/* Game.module.css ─ Cyber-Runner UI */
+
+/* ── Layout shell ──────────────────────────────────────────────── */
+.gameWrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050a14;
+}
+
+/* ── Canvas ────────────────────────────────────────────────────── */
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;           /* critical: hand all pointer events to JS */
+  -webkit-touch-callout: none;
+  user-select: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── Score / title bar (always on top) ─────────────────────────── */
+.hudBar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 18px;
+  background: rgba(5, 10, 20, 0.82);
+  border-bottom: 1px solid rgba(0, 255, 231, 0.15);
+  backdrop-filter: blur(6px);
+  pointer-events: none;         /* pass clicks through to canvas */
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  z-index: 10;
+}
+
+.hudLeft,
+.hudRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 80px;
+}
+
+.hudRight {
+  align-items: flex-end;
+}
+
+.hudLabel {
+  font-size: clamp(8px, 1.5vw, 10px);
+  color: rgba(0, 255, 231, 0.5);
+  letter-spacing: 0.15em;
+}
+
+.hudValue {
+  font-size: clamp(14px, 2.5vw, 20px);
+  color: #00ffe7;
+  text-shadow: 0 0 10px rgba(0, 255, 231, 0.7);
+}
+
+.hudTitle {
+  font-size: clamp(11px, 2vw, 15px);
+  color: #ff2d6b;
+  letter-spacing: 0.28em;
+  text-shadow: 0 0 14px #ff2d6b;
+}
+
+/* ── Game Over overlay ─────────────────────────────────────────── */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Dark scan-line tint */
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.06) 0px,
+    rgba(0,0,0,0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  ),
+  rgba(5, 10, 20, 0.78);
+  backdrop-filter: blur(3px);
+  z-index: 20;
+  animation: overlayFadeIn 0.35s ease-out both;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.overlayCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: clamp(28px, 6vw, 52px) clamp(32px, 8vw, 72px);
+  /* Neon-bordered panel */
+  border: 1px solid rgba(255, 45, 107, 0.5);
+  border-radius: 4px;
+  background: rgba(5, 10, 20, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(255, 45, 107, 0.12),
+    0 0 40px rgba(255, 45, 107, 0.18),
+    inset 0 0 40px rgba(255, 45, 107, 0.04);
+  animation: cardSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  text-align: center;
+}
+
+@keyframes cardSlideIn {
+  from { transform: translateY(18px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+.overlayEyebrow {
+  font-size: clamp(9px, 1.6vw, 11px);
+  letter-spacing: 0.35em;
+  color: rgba(255, 45, 107, 0.65);
+  text-transform: uppercase;
+}
+
+.overlayTitle {
+  font-size: clamp(32px, 7vw, 56px);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #ff2d6b;
+  text-shadow:
+    0 0 20px rgba(255, 45, 107, 0.9),
+    0 0 60px rgba(255, 45, 107, 0.4);
+  /* Glitch flicker */
+  animation: glitch 2.4s infinite;
+}
+
+@keyframes glitch {
+  0%, 94%, 100% { text-shadow: 0 0 20px rgba(255,45,107,0.9), 0 0 60px rgba(255,45,107,0.4); transform: none; }
+  95%  { transform: translate(-2px, 0); text-shadow: 2px 0 #00ffe7, -2px 0 #ff2d6b; }
+  96%  { transform: translate(2px, 0);  text-shadow: -2px 0 #00ffe7, 2px 0 #ff2d6b; }
+  97%  { transform: none; }
+}
+
+.overlayScore {
+  font-size: clamp(12px, 2.2vw, 16px);
+  color: rgba(0, 255, 231, 0.65);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.overlayScore strong {
+  color: #00ffe7;
+  text-shadow: 0 0 10px rgba(0, 255, 231, 0.7);
+  margin-left: 8px;
+}
+
+/* ── Restart button ────────────────────────────────────────────── */
+.restartBtn {
+  margin-top: 8px;
+  padding: 12px 36px;
+  font-family: inherit;
+  font-size: clamp(12px, 2vw, 15px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #050a14;
+  background: #00ffe7;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow:
+    0 0 16px rgba(0, 255, 231, 0.6),
+    0 0 32px rgba(0, 255, 231, 0.2);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.restartBtn:hover,
+.restartBtn:focus-visible {
+  background: #80fff5;
+  box-shadow:
+    0 0 24px rgba(0, 255, 231, 0.9),
+    0 0 48px rgba(0, 255, 231, 0.3);
+  transform: scale(1.04);
+  outline: none;
+}
+
+.restartBtn:active {
+  transform: scale(0.97);
+}
+
+.overlayHint {
+  font-size: clamp(9px, 1.4vw, 11px);
+  color: rgba(0, 255, 231, 0.3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Mute button ───────────────────────────────────────────────────── */
+.muteBtn {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  z-index: 30;
+  background: rgba(5, 10, 20, 0.75);
+  border: 1px solid rgba(0, 255, 231, 0.2);
+  border-radius: 4px;
+  color: #00ffe7;
+  font-size: 16px;
+  line-height: 1;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  /* Sit above the HUD bar */
+  margin-top: 2px;
+}
+
+.muteBtn:hover,
+.muteBtn:focus-visible {
+  background: rgba(0, 255, 231, 0.12);
+  border-color: rgba(0, 255, 231, 0.55);
+  outline: none;
+  transform: scale(1.08);
+}
+
+.muteBtn:active {
+  transform: scale(0.94);
+}
+
+/* ── Start screen card ─────────────────────────────────────────────── */
+.startCard {
+  /* Cyan border instead of pink for the start screen */
+  border-color: rgba(0, 255, 231, 0.45) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 231, 0.1),
+    0 0 40px rgba(0, 255, 231, 0.14),
+    inset 0 0 40px rgba(0, 255, 231, 0.04) !important;
+}
+
+.startTitle {
+  /* Cyan glow variant for start screen title */
+  color: #00ffe7 !important;
+  text-shadow:
+    0 0 20px rgba(0, 255, 231, 0.9),
+    0 0 60px rgba(0, 255, 231, 0.4) !important;
+  animation: startPulse 2s ease-in-out infinite !important;
+}
+
+@keyframes startPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
+}
+
+/* Controls list */
+.controls {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: clamp(10px, 1.8vw, 13px);
+  color: rgba(0, 255, 231, 0.55);
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+.controls li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.9em;
+  color: #00ffe7;
+  background: rgba(0, 255, 231, 0.08);
+  border: 1px solid rgba(0, 255, 231, 0.25);
+  border-radius: 3px;
+}
+
+/* High score shown on start screen */
+.overlayHighScore {
+  font-size: clamp(10px, 1.8vw, 13px);
+  color: rgba(0, 255, 231, 0.4);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.overlayHighScore strong {
+  color: #00ffe7;
+  margin-left: 6px;
+}
+
+/* New record banner on Game Over */
+.newRecord {
+  font-size: clamp(11px, 2vw, 14px);
+  letter-spacing: 0.25em;
+  color: #ffe600;
+  text-shadow:
+    0 0 12px rgba(255, 230, 0, 0.9),
+    0 0 28px rgba(255, 230, 0, 0.4);
+  animation: recordFlash 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes recordFlash {
+  from { opacity: 0.7; }
+  to   { opacity: 1;   }
+}

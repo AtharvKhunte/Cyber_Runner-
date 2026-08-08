@@ -1,0 +1,74 @@
+/* ─── Global reset ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Cyber-Runner design tokens */
+  --color-bg:        #050a14;
+  --color-hud-bg:    rgba(5, 10, 20, 0.85);
+  --color-primary:   #00ffe7;   /* neon cyan  */
+  --color-secondary: #ff2d6b;   /* neon pink  */
+  --color-accent:    #ffe600;   /* warning amber */
+  --color-surface:   #0d1a2e;
+  --color-border:    rgba(0, 255, 231, 0.18);
+
+  --font-display: 'Share Tech Mono', 'Courier New', monospace;
+  --font-ui:      system-ui, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-primary);
+  font-family: var(--font-ui);
+  /* Prevent pull-to-refresh and overscroll on mobile */
+  overscroll-behavior: none;
+}
+
+/* ─── Canvas ───────────────────────────────────────────────────── */
+canvas {
+  display: block;
+  /*
+   * Disable ALL default browser touch gestures on the canvas so every
+   * pointer event is forwarded to our unified input system instead of
+   * being consumed by the browser (scroll, zoom, long-press menu…).
+   */
+  touch-action: none;
+  /* Prevent iOS callout / image-save sheet on long press */
+  -webkit-touch-callout: none;
+  user-select: none;
+  /* Keep pixels sharp when the canvas is CSS-scaled */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ─── HUD overlay (sits above the canvas via position:absolute) ── */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;   /* let clicks fall through to canvas */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Mobile virtual controls (re-enable pointer events only here) */
+.virtual-controls {
+  pointer-events: auto;
+}
+
+/* ─── Utility ──────────────────────────────────────────────────── */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
