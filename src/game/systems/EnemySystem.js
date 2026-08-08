@@ -14,6 +14,7 @@
  *    player palette.
  */
 
+import { drawNormalEnemy, drawFastEnemy, drawTankEnemy, drawBossEnemy } from '../entities/EnemyRenderer';
 export const ENEMY_RADIUS = 13;
 export const BOSS_RADIUS  = 36;
 export const BOSS_HP      = 5;
@@ -92,45 +93,34 @@ export function drawEnemies(ctx, enemies, alpha) {
   for (const e of enemies) {
     const x     = e.px + (e.x - e.px) * alpha;
     const y     = e.py + (e.y - e.py) * alpha;
-    const pal   = COLORS[e.type];
-    const r     = e.radius;
-    const sides = e.type === 'tank' ? 8 : e.type === 'fast' ? 3 : 6;
     const flash = e.flashTimer > 0;
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(e.rotPhase);
 
-    ctx.globalAlpha = flash ? 0.7 : 0.22;
-    ctx.shadowColor = flash ? '#ffffff' : pal.glow;
-    ctx.shadowBlur  = flash ? 60 : 40;
-    ctx.fillStyle   = flash ? '#ffffff' : pal.glow;
-    polygon(ctx, sides, r + 6); ctx.fill();
+    switch (e.type) {
+      case 'normal': drawNormalEnemy(ctx, e.radius, flash);                    break;
+      case 'fast':   drawFastEnemy  (ctx, e.radius, flash);                    break;
+      case 'tank':   drawTankEnemy  (ctx, e.radius, flash);                    break;
+      case 'boss':   drawBossEnemy  (ctx, e.radius, flash, e.rotPhase * 0.7); break;
+    }
 
-    ctx.globalAlpha = 1;
-    ctx.shadowColor = flash ? '#ffffff' : pal.glow;
-    ctx.shadowBlur  = 20;
-    const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-    gr.addColorStop(0,   flash ? '#ffffff' : 'rgba(255,130,160,0.95)');
-    gr.addColorStop(0.5, flash ? '#ffaaaa' : pal.fill);
-    gr.addColorStop(1,   'rgba(0,0,0,0.3)');
-    ctx.fillStyle = gr;
-    polygon(ctx, sides, r); ctx.fill();
-
-    ctx.shadowBlur  = 10;
-    ctx.strokeStyle = flash ? '#ffffff' : pal.outline;
-    ctx.lineWidth   = e.type === 'boss' ? 2.5 : 1.5;
-    ctx.stroke();
-
+    // Boss HP bar — drawn after rotate so it stays horizontal
     if (e.type === 'boss') {
-      const barW = r * 2.2, barH = 5, barX = -r * 1.1, barY = r + 8;
+      ctx.rotate(-e.rotPhase); // cancel rotation for the bar
+      const barW  = e.radius * 2.4;
+      const barH  = 6;
+      const barX  = -barW / 2;
+      const barY  = e.radius + 12;
       const ratio = e.hp / e.maxHp;
-      ctx.shadowBlur  = 0; ctx.globalAlpha = 0.85;
-      ctx.fillStyle   = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur  = 0;
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle   = 'rgba(0,0,0,0.7)';
       ctx.fillRect(barX, barY, barW, barH);
       ctx.fillStyle = ratio > 0.5 ? '#00ff88' : ratio > 0.25 ? '#ffe600' : '#ff2d6b';
       ctx.fillRect(barX, barY, barW * ratio, barH);
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth   = 1;
       ctx.strokeRect(barX, barY, barW, barH);
     }

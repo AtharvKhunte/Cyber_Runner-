@@ -14,6 +14,8 @@ import { makeOrbitState, updateOrbit, checkOrbitCollisions, drawOrbit } from '..
 import UpgradeScreen from './UpgradeScreen';
 import ShopScreen    from './ShopScreen';
 import styles from './Game.module.css';
+import { makeStarField, updateStarField, drawStarField } from '../game/systems/StarField';
+import { drawPlayerShip } from '../game/entities/ShipRenderer';
 
 export const PLAYER_RADIUS  = 14;
 const BASE_PLAYER_SPEED     = 220;
@@ -31,6 +33,7 @@ function makeGameState(metaBonus = {}) {
       initialised: false,
       angle: -Math.PI / 2,
       pulsePhase: 0,
+      navPhase: 0,          // ← add this
       lastTrailMs: 0,
     },
     bullets:   makeBulletState(),
@@ -42,6 +45,7 @@ function makeGameState(metaBonus = {}) {
     run:       makeRunState(metaBonus),
     score:     0,
     shake:     { x: 0, y: 0, magnitude: 0 },
+    starField: null,        // ← add this (initialised on first tick)
   };
 }
 
@@ -66,41 +70,23 @@ function drawGrid(ctx, W, H, px, py) {
   ctx.restore();
 }
 
-function drawShip(ctx, x, y, angle, pulse, shielded, shipColor) {
-  const color = shipColor || SHIP_COLOR;
+function drawShip(ctx, x, y, angle, pulse, shielded, shipColor, navPhase) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle + Math.PI / 2);
-  const L = PLAYER_RADIUS * 1.6, W = PLAYER_RADIUS * 0.9;
-  const hull = () => {
-    ctx.beginPath();
-    ctx.moveTo(0,-L); ctx.lineTo(W,L*0.55); ctx.lineTo(-W,L*0.55); ctx.closePath();
-  };
-  ctx.globalAlpha = 0.18 + pulse*0.08; ctx.shadowColor = color; ctx.shadowBlur = 55+pulse*20;
-  ctx.fillStyle = color; hull(); ctx.fill();
-  ctx.globalAlpha = 1; ctx.shadowColor = color; ctx.shadowBlur = 22+pulse*14;
-  const g = ctx.createLinearGradient(0,-L,0,L*0.55);
-  g.addColorStop(0,'#ffffff'); g.addColorStop(0.35,color);
-  g.addColorStop(0.75,'rgba(0,200,180,0.6)'); g.addColorStop(1,'rgba(0,100,90,0.2)');
-  ctx.fillStyle = g; hull(); ctx.fill();
-  ctx.globalAlpha = 0.7+pulse*0.3; ctx.shadowBlur = 8;
-  ctx.strokeStyle = '#80fff5'; ctx.lineWidth = 0.8; hull(); ctx.stroke();
-  const ey = L*0.55, er = W*(0.6+pulse*0.5);
-  const eg = ctx.createRadialGradient(0,ey,0,0,ey,er*2.2);
-  eg.addColorStop(0,`rgba(0,255,231,${0.6+pulse*0.4})`);
-  eg.addColorStop(0.3,`rgba(255,120,60,${0.3+pulse*0.25})`);
-  eg.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.globalAlpha = 1; ctx.shadowColor = '#ff6030'; ctx.shadowBlur = 18+pulse*14;
-  ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(0,ey,er*2.2,0,Math.PI*2); ctx.fill();
-  ctx.globalAlpha = 0.9; ctx.shadowColor = '#fff'; ctx.shadowBlur = 10;
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0,-L+2,2,0,Math.PI*2); ctx.fill();
+  drawPlayerShip(ctx, pulse, shipColor || '#00ffe7', navPhase || 0);
   ctx.restore();
+
   if (shielded) {
     ctx.save();
-    ctx.strokeStyle = '#00cfff'; ctx.shadowColor = '#00cfff'; ctx.shadowBlur = 20;
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.6 + 0.3*Math.sin(Date.now()*0.006);
-    ctx.beginPath(); ctx.arc(x,y,PLAYER_RADIUS+10,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = '#00cfff';
+    ctx.shadowColor = '#00cfff';
+    ctx.shadowBlur  = 20;
+    ctx.lineWidth   = 2;
+    ctx.globalAlpha = 0.6 + 0.3 * Math.sin(Date.now() * 0.006);
+    ctx.beginPath();
+    ctx.arc(x, y, PLAYER_RADIUS + 14, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
   }
 }
@@ -245,6 +231,19 @@ export default function Game() {
     const H   = canvas.clientHeight;
 
     if (!p.initialised) { p.x=p.px=W/2; p.y=p.py=H/2; p.initialised=true; }
+
+    // Init star field once canvas size is known
+if (!gs.starField) {
+  gs.starField = makeStarField(W, H);
+  gs.starField.lastPX = p.x;
+  gs.starField.lastPY = p.y;
+}
+
+// Update star field
+updateStarField(gs.starField, p.x, p.y, dt, W, H);
+
+// Nav light phase
+p.navPhase = (p.navPhase + dt * 3.5) % (Math.PI * 2);
 
     updateShake(gs.shake, dt);
     updateRunState(run, pu, dt);
@@ -398,7 +397,8 @@ export default function Game() {
     const drawY = p.initialised ? lerp(p.py,p.y,alpha)+gs.shake.y : H/2;
 
     ctx.fillStyle='#050a14'; ctx.fillRect(0,0,W,H);
-    drawGrid(ctx,W,H,drawX,drawY);
+    drawGrid(ctx, W, H, drawX, drawY);
+if (gs.starField) drawStarField(ctx, gs.starField);
 
     if (phaseRef.current !== 'idle') {
       gs.particles.draw(ctx,alpha);
@@ -407,7 +407,7 @@ export default function Game() {
       drawEnemies(ctx,gs.enemies.enemies,alpha);
       drawPowerUps(ctx,pu);
       const pulse=(Math.sin(p.pulsePhase)+1)/2;
-      drawShip(ctx,drawX,drawY,p.angle,pulse,pu.shieldHp>0,activeShipDef.color);
+      drawShip(ctx, drawX, drawY, p.angle, pulse, pu.shieldHp > 0, activeShipDef.color, p.navPhase);
       if (inputRef.current.joystick) drawJoystick(ctx,inputRef.current.joystick);
       drawActiveBuffs(ctx,pu,10,H-58);
       drawRunStats(ctx,gs.run,10,H-68);
