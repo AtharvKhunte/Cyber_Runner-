@@ -26,7 +26,6 @@ const GRID_CELL           = 44;
 const TRAIL_INTERVAL      = 28;
 const lerp = (a, b, t) => a + (b - a) * t;
 
-/* ── Game state factory ───────────────────────────────────────── */
 function makeGameState(metaBonus = {}) {
   return {
     player: {
@@ -63,7 +62,6 @@ function updateShake(shake, dt) {
   shake.y = (Math.random() * 2 - 1) * shake.magnitude;
 }
 
-/* ── Draw helpers ─────────────────────────────────────────────── */
 function drawGrid(ctx, W, H, px, py) {
   ctx.save();
   ctx.strokeStyle = GRID_COLOR; ctx.lineWidth = 1;
@@ -79,11 +77,10 @@ function drawShip(ctx, x, y, angle, pulse, shielded, shipId, navPhase, invincibl
   if (invincible && Math.floor(Date.now() / 80) % 2 === 0) { ctx.restore(); return; }
   ctx.translate(x, y);
   ctx.rotate(angle + Math.PI / 2);
-  if (shipId === 'tank')           drawTank(ctx, pulse, navPhase);
-  else if (shipId === 'assassin')  drawAssassin(ctx, pulse, navPhase);
-  else                             drawScout(ctx, pulse, navPhase);
+  if (shipId === 'tank')          drawTank(ctx, pulse, navPhase);
+  else if (shipId === 'assassin') drawAssassin(ctx, pulse, navPhase);
+  else                            drawScout(ctx, pulse, navPhase);
   ctx.restore();
-
   if (shielded) {
     ctx.save();
     ctx.strokeStyle = '#00cfff'; ctx.shadowColor = '#00cfff'; ctx.shadowBlur = 20;
@@ -114,11 +111,15 @@ function drawHealthBar(ctx, hp, maxHp, W) {
   const col = ratio > 0.5 ? '#00ff88' : ratio > 0.25 ? '#ffe600' : '#ff2d6b';
   ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 10;
   ctx.fillRect(bX, bY, bW * ratio, bH);
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
   ctx.strokeRect(bX, bY, bW, bH);
   for (let i = 1; i < maxHp; i++) {
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(bX + (bW / maxHp) * i, bY); ctx.lineTo(bX + (bW / maxHp) * i, bY + bH); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(bX + (bW / maxHp) * i, bY);
+    ctx.lineTo(bX + (bW / maxHp) * i, bY + bH);
+    ctx.stroke();
   }
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -141,9 +142,6 @@ function drawRunStats(ctx, run, H) {
   ctx.restore();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   COMPONENT
-══════════════════════════════════════════════════════════════ */
 export default function Game() {
   const canvasRef    = useRef(null);
   const inputRef     = useInputVector(canvasRef);
@@ -166,39 +164,40 @@ export default function Game() {
   const [playerHp,       setPlayerHp]       = useState(MAX_PLAYER_HP);
   const [upgradeCostNow, setUpgradeCostNow] = useState(0);
 
-  const phaseRef            = useRef('idle');
-  const waveRef             = useRef(1);
-  const showUpgradesRef     = useRef(false);
-  const audioRef            = useRef(audio);
-  const setScoreRef         = useRef(setScore);
-  const setWaveRef          = useRef(setWave);
-  const setPhaseRef         = useRef(setPhase);
-  const setWavePhaseRef     = useRef(setWavePhase);
-  const setAnnouncementRef  = useRef(setAnnouncement);
-  const setIsBossRef        = useRef(setIsBoss);
-  const setShowUpgradesRef  = useRef(setShowUpgrades);
-  const setPendingRef       = useRef(setPendingUpgrades);
-  const setPlayerHpRef      = useRef(setPlayerHp);
-  const setUpgradeCostRef   = useRef(setUpgradeCostNow);
-  const addCreditsRef       = useRef(addCredits);
-  const updateHighScoreRef  = useRef(updateHighScore);
-  const spendCreditsRef     = useRef(spendCredits);
+  // All refs — readable inside RAF callbacks without stale closures
+  const phaseRef           = useRef('idle');
+  const showUpgradesRef    = useRef(false);
+  const waveRef            = useRef(1);
+  const audioRef           = useRef(audio);
+  const addCreditsRef      = useRef(addCredits);
+  const updateHighScoreRef = useRef(updateHighScore);
+  const spendCreditsRef    = useRef(spendCredits);
+  const setScoreRef        = useRef(setScore);
+  const setWaveRef         = useRef(setWave);
+  const setPhaseRef        = useRef(setPhase);
+  const setWavePhaseRef    = useRef(setWavePhase);
+  const setAnnouncementRef = useRef(setAnnouncement);
+  const setIsBossRef       = useRef(setIsBoss);
+  const setShowUpgradesRef = useRef(setShowUpgrades);
+  const setPendingRef      = useRef(setPendingUpgrades);
+  const setPlayerHpRef     = useRef(setPlayerHp);
+  const setUpgradeCostRef  = useRef(setUpgradeCostNow);
+  const setEarnedCreditsRef= useRef(setEarnedCredits);
 
-  useEffect(() => { audioRef.current = audio; }, [audio]);
-  useEffect(() => { addCreditsRef.current = addCredits; }, [addCredits]);
+  useEffect(() => { audioRef.current = audio; },             [audio]);
+  useEffect(() => { addCreditsRef.current = addCredits; },   [addCredits]);
   useEffect(() => { updateHighScoreRef.current = updateHighScore; }, [updateHighScore]);
-  useEffect(() => { spendCreditsRef.current = spendCredits; }, [spendCredits]);
-  useEffect(() => { showUpgradesRef.current = showUpgrades; }, [showUpgrades]);
+  useEffect(() => { spendCreditsRef.current = spendCredits; },[spendCredits]);
 
   const activeShip = SHIPS.find(s => s.id === meta.activeShip) || SHIPS[0];
 
-  /* ── startGame ──────────────────────────────────────────── */
+  /* ── startGame ──────────────────────────────────────────────── */
   const startGame = useCallback(() => {
     const metaBonus = buildMetaBonus(meta);
-    gameRef.current      = makeGameState(metaBonus);
-    phaseRef.current     = 'playing';
-    waveRef.current      = 1;
-    showUpgradesRef.current = false;
+    gameRef.current          = makeGameState(metaBonus);
+    phaseRef.current         = 'playing';
+    showUpgradesRef.current  = false;
+    waveRef.current          = 1;
     setPhaseRef.current('playing');
     setScoreRef.current(0);
     setWaveRef.current(1);
@@ -208,10 +207,10 @@ export default function Game() {
     setShowUpgradesRef.current(false);
     setPlayerHpRef.current(MAX_PLAYER_HP);
     setUpgradeCostRef.current(0);
-    setEarnedCredits(0);
+    setEarnedCreditsRef.current(0);
   }, [meta]);
 
-  /* ── pickUpgrade ────────────────────────────────────────── */
+  /* ── pickUpgrade ────────────────────────────────────────────── */
   const pickUpgrade = useCallback((upgrade) => {
     const gs = gameRef.current; if (!gs) return;
     const cost = upgradeCost(waveRef.current);
@@ -227,7 +226,7 @@ export default function Game() {
     setWavePhaseRef.current('announce');
   }, []);
 
-  /* ── Keyboard ───────────────────────────────────────────── */
+  /* ── Keyboard shortcuts ─────────────────────────────────────── */
   useEffect(() => {
     const onKey = (e) => {
       if ((phaseRef.current === 'idle' || phaseRef.current === 'dead') &&
@@ -250,12 +249,36 @@ export default function Game() {
 
   const toggleMute = useCallback(() => { setMuted(!audio.toggle()); }, [audio]);
 
-  /* ══════════════════════════════════════════════════════════
-     UPDATE
-  ══════════════════════════════════════════════════════════ */
+  /* ── handlePlayerHit — uses only stable refs ────────────────── */
+  const handlePlayerHit = useCallback((p, pu, ps, gs, sfx, ws) => {
+    if (consumeShieldHit(pu)) {
+      triggerShake(gs.shake, 10);
+      ps.emitEnemyExplosion(p.x, p.y, PLAYER_RADIUS * 2);
+    } else {
+      p.hp = Math.max(0, p.hp - 1);
+      p.invincibleTimer = 1.5;
+      setPlayerHpRef.current(p.hp);
+      triggerShake(gs.shake, 10);
+      ps.emitEnemyExplosion(p.x, p.y, PLAYER_RADIUS * 1.5);
+      if (p.hp <= 0) {
+        phaseRef.current = 'dead';
+        setPhaseRef.current('dead');
+        const earned = computeCredits(gs.score, ws.wave);
+        setEarnedCreditsRef.current(earned);
+        addCreditsRef.current(earned);
+        updateHighScoreRef.current(gs.score);
+        sfx.gameOver();
+        triggerShake(gs.shake, 20);
+      }
+    }
+  }, []);
+
+  /* ══════════════════════════════════════════════════════════════
+     UPDATE — fixed 60 Hz tick
+  ══════════════════════════════════════════════════════════════ */
   const update = useCallback((dt) => {
     if (phaseRef.current !== 'playing') return;
-    if (showUpgradesRef.current) return;
+    if (showUpgradesRef.current) return;          // paused during upgrade pick
     const canvas = canvasRef.current; if (!canvas) return;
     const gs = gameRef.current; if (!gs) return;
 
@@ -269,10 +292,9 @@ export default function Game() {
     const W   = canvas.clientWidth;
     const H   = canvas.clientHeight;
 
-    /* Init */
     if (!p.initialised) { p.x = p.px = W / 2; p.y = p.py = H / 2; p.initialised = true; }
 
-    /* Star field */
+    // Star field
     if (!gs.starField) {
       gs.starField = makeStarField(W, H);
       gs.starField.lastPX = p.x; gs.starField.lastPY = p.y;
@@ -282,10 +304,9 @@ export default function Game() {
     updateShake(gs.shake, dt);
     updateRunState(run, pu, dt);
 
-    /* Invincibility */
     if (p.invincibleTimer > 0) p.invincibleTimer -= dt;
 
-    /* Movement */
+    // Movement
     p.px = p.x; p.py = p.y;
     const speed = currentPlayerSpeed(pu, BASE_PLAYER_SPEED + run.speedBonus);
     p.vx = inp.x * speed; p.vy = inp.y * speed;
@@ -294,7 +315,7 @@ export default function Game() {
     p.x = Math.max(PAD, Math.min(W - PAD, p.x));
     p.y = Math.max(PAD, Math.min(H - PAD, p.y));
 
-    /* Heading */
+    // Heading
     if (Math.abs(p.vx) > 1 || Math.abs(p.vy) > 1) {
       const target = Math.atan2(p.vy, p.vx);
       const da = target - p.angle;
@@ -302,7 +323,7 @@ export default function Game() {
       p.angle += wrapped * Math.min(dt * 12, 1);
     }
 
-    /* Pulse + nav + trail */
+    // Pulse + nav + trail
     const moving = Math.abs(inp.x) > 0.05 || Math.abs(inp.y) > 0.05;
     p.pulsePhase = (p.pulsePhase + dt * (moving ? 8 : 3)) % (Math.PI * 2);
     p.navPhase   = (p.navPhase + dt * 3.5) % (Math.PI * 2);
@@ -315,7 +336,7 @@ export default function Game() {
       );
     }
 
-    /* Wave machine */
+    // Wave state machine
     const wr = updateWave(ws, dt, gs.enemies.enemies.length);
     if (wr.spawnNormal) spawnNormalEnemy(gs.enemies, W, H, ws.wave);
     if (wr.spawnBoss) {
@@ -340,7 +361,7 @@ export default function Game() {
       setWavePhaseRef.current('announce');
     }
 
-    /* Player bullets */
+    // Player bullets
     const firing = inp.fire || touchFireRef.current;
     const prevCount = gs.bullets.bullets.length;
     updateBullets(
@@ -350,7 +371,7 @@ export default function Game() {
     );
     if (gs.bullets.bullets.length > prevCount) sfx.shoot();
 
-    /* Ricochet */
+    // Ricochet
     if (run.ricochet) {
       for (const b of gs.bullets.bullets) {
         if (!b.bounced) {
@@ -360,7 +381,7 @@ export default function Game() {
       }
     }
 
-    /* Orbit */
+    // Orbit bullets
     updateOrbit(gs.orbit, run.orbitCount, p.x, p.y, dt);
     if (run.orbitCount > 0) {
       const or = checkOrbitCollisions(gs.orbit, gs.enemies.enemies);
@@ -376,12 +397,12 @@ export default function Game() {
       }
     }
 
-    /* Enemy movement + firing */
+    // Enemy movement + return new enemy bullets
     const newEBullets = updateEnemies(gs.enemies, p.x, p.y, ws.wave, dt);
     addEnemyBullets(gs.enemyBullets, newEBullets);
     updateEnemyBullets(gs.enemyBullets, dt, W, H);
 
-    /* Player bullet × enemy */
+    // Player bullet × enemy collision
     const { scoreDelta, bullets: liveBullets, enemies: liveEnemies, killedPositions } =
       checkBulletEnemyCollisions(gs.bullets.bullets, gs.enemies.enemies, run.bulletDamage, run.piercing);
     if (scoreDelta > 0) {
@@ -398,7 +419,7 @@ export default function Game() {
       if (killedPositions.length) triggerShake(gs.shake, 5);
     }
 
-    /* Power-ups */
+    // Power-ups
     const pur = updatePowerUps(pu, p.x, p.y, gs.score, dt, run.magnetRange);
     if (pur.nukeTriggered) {
       gs.enemies.enemies.forEach(e => ps.emitEnemyExplosion(e.x, e.y, e.radius));
@@ -411,38 +432,21 @@ export default function Game() {
 
     ps.update(dt);
 
-    /* Hit detection */
-    const playerHit =
-      (p.invincibleTimer <= 0 && checkEnemyBulletPlayerCollision(gs.enemyBullets, p.x, p.y, PLAYER_RADIUS)) ||
-      (p.invincibleTimer <= 0 && checkPlayerEnemyCollision(p.x, p.y, gs.enemies.enemies));
-
-    if (playerHit) {
-      if (consumeShieldHit(pu)) {
-        triggerShake(gs.shake, 10);
-        ps.emitEnemyExplosion(p.x, p.y, PLAYER_RADIUS * 2);
-      } else {
-        p.hp -= 1;
-        p.invincibleTimer = 1.5;
-        setPlayerHpRef.current(p.hp);
-        triggerShake(gs.shake, 10);
-        ps.emitEnemyExplosion(p.x, p.y, PLAYER_RADIUS * 1.5);
-        if (p.hp <= 0) {
-          phaseRef.current = 'dead';
-          setPhaseRef.current('dead');
-          const earned = computeCredits(gs.score, ws.wave);
-          setEarnedCredits(earned);
-          addCreditsRef.current(earned);
-          updateHighScoreRef.current(gs.score);
-          sfx.gameOver();
-          triggerShake(gs.shake, 20);
-        }
-      }
+    // Hit detection — enemy bullets
+    if (p.invincibleTimer <= 0 && checkEnemyBulletPlayerCollision(gs.enemyBullets, p.x, p.y, PLAYER_RADIUS)) {
+      handlePlayerHit(p, pu, ps, gs, sfx, ws);
     }
-  }, [inputRef]);
 
-  /* ══════════════════════════════════════════════════════════
-     RENDER
-  ══════════════════════════════════════════════════════════ */
+    // Hit detection — enemy body contact
+    if (p.invincibleTimer <= 0 && checkPlayerEnemyCollision(p.x, p.y, gs.enemies.enemies)) {
+      handlePlayerHit(p, pu, ps, gs, sfx, ws);
+    }
+
+  }, [inputRef, handlePlayerHit]);
+
+  /* ══════════════════════════════════════════════════════════════
+     RENDER — once per visual frame
+  ══════════════════════════════════════════════════════════════ */
   const render = useCallback((ctx, alpha) => {
     const canvas = canvasRef.current; if (!canvas) return;
     const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -470,7 +474,7 @@ export default function Game() {
       if (inputRef.current.joystick) drawJoystick(ctx, inputRef.current.joystick);
       drawActiveBuffs(ctx, pu, 10, H - 58);
       drawHealthBar(ctx, p.hp, MAX_PLAYER_HP, W);
-      drawRunStats(ctx, run, H);
+      drawRunStats(ctx, gs.run, H);
     }
   }, [inputRef, meta.activeShip]);
 
@@ -483,7 +487,7 @@ export default function Game() {
     <div className={styles.gameWrapper}>
       <canvas ref={canvasRef} className={styles.canvas} aria-label="Cyber-Runner" />
 
-      {/* HUD */}
+      {/* HUD bar */}
       <header className={styles.hudBar}>
         <span className={styles.hudLeft}>
           <span className={styles.hudLabel}>SCORE</span>
@@ -549,26 +553,26 @@ export default function Game() {
         />
       )}
 
-      {/* Idle / Start screen */}
+      {/* Start / Idle screen */}
       {phase === 'idle' && !showShop && (
         <div className={styles.overlay}>
           <div className={`${styles.overlayCard} ${styles.startCard}`}>
             <p className={styles.overlayEyebrow}>INITIALISING SYSTEMS</p>
             <h1 className={`${styles.overlayTitle} ${styles.startTitle}`}>CYBER-RUNNER</h1>
-            <p style={{ color: '#ffe600', fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.1em' }}>
+            <p style={{ color:'#ffe600', fontFamily:'monospace', fontSize:'13px', letterSpacing:'0.1em' }}>
               ⬡ {meta.credits} CREDITS
             </p>
             <ul className={styles.controls}>
               <li><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Move</li>
               <li><kbd>Space</kbd> / 🔥 Fire</li>
-              <li>3 HP · enemies fire back</li>
-              <li>Boss every 5 waves · enrages at 50% HP</li>
+              <li>3 HP · enemies fire back from wave 2</li>
+              <li>Boss every 5 waves · enrages at 40% HP</li>
             </ul>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center' }}>
               <button className={styles.restartBtn} onClick={startGame} autoFocus>START GAME</button>
               <button
                 className={styles.restartBtn}
-                style={{ background: 'rgba(255,230,0,0.1)', borderColor: 'rgba(255,230,0,0.5)', color: '#ffe600' }}
+                style={{ background:'rgba(255,230,0,0.1)', borderColor:'rgba(255,230,0,0.5)', color:'#ffe600' }}
                 onClick={() => setShowShop(true)}
               >⬡ SHOP</button>
             </div>
@@ -589,14 +593,14 @@ export default function Game() {
             <p className={styles.overlayScore}>SCORE <strong>{String(score).padStart(6, '0')}</strong></p>
             {score >= meta.highScore && score > 0 && <p className={styles.newRecord}>✦ NEW RECORD ✦</p>}
             <p className={styles.overlayScore}>REACHED WAVE <strong>{wave}</strong></p>
-            <p className={styles.overlayScore} style={{ color: '#ffe600' }}>
+            <p className={styles.overlayScore} style={{ color:'#ffe600' }}>
               +{earnedCredits} CREDITS EARNED
             </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center' }}>
               <button className={styles.restartBtn} onClick={startGame} autoFocus>PLAY AGAIN</button>
               <button
                 className={styles.restartBtn}
-                style={{ background: 'rgba(255,230,0,0.1)', borderColor: 'rgba(255,230,0,0.5)', color: '#ffe600' }}
+                style={{ background:'rgba(255,230,0,0.1)', borderColor:'rgba(255,230,0,0.5)', color:'#ffe600' }}
                 onClick={() => setShowShop(true)}
               >⬡ SHOP</button>
             </div>
