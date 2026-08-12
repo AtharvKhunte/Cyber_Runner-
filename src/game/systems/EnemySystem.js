@@ -58,7 +58,8 @@ export function updateEnemies(es,playerX,playerY,wave,dt){
     e.rotPhase=(e.rotPhase+dt*(e.type==='boss'?0.5:e.type==='fast'?3.5:1.6))%(Math.PI*2);
     if(e.flashTimer>0) e.flashTimer-=dt;
 
-    if(wave>=2 && FIRE_RATE[e.type] && e.fireTimer!==Infinity){
+    // Firing — all waves, no wave restriction
+    if(FIRE_RATE[e.type] && e.fireTimer!==Infinity){
       e.fireTimer-=dt;
       if(e.fireTimer<=0){
         e.fireTimer=FIRE_RATE[e.type];

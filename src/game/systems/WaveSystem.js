@@ -40,26 +40,25 @@ export function updateWave(ws, dt, activeEnemies){
       result.spawnBoss = true;
       ws.bossSpawned   = true;
     }
-
     ws.spawnTimer -= dt;
     if(ws.spawnTimer <= 0 && ws.quota > 0){
       ws.spawnTimer      = waveSpawnInterval(ws.wave);
       ws.quota          -= 1;
       result.spawnNormal = true;
     }
-
+    // Only clear if quota done AND all enemies dead
     if(ws.quota <= 0 && activeEnemies === 0){
       ws.phase      = 'clear';
-      ws.phaseTimer = CLEAR_DURATION;
+      ws.phaseTimer = 9999; // frozen — pickUpgrade resets this
       result.waveClear = true;
     }
     return result;
   }
 
   if(ws.phase === 'clear'){
+    // Timer is frozen at 9999 until pickUpgrade resets it
     ws.phaseTimer -= dt;
     if(ws.phaseTimer <= 0){
-      ws.wave        += 1;
       ws.phase        = 'announce';
       ws.phaseTimer   = ANNOUNCE_DURATION;
       ws.announcement = isBossWave(ws.wave) ? `⚠ BOSS WAVE ${ws.wave} ⚠` : `WAVE ${ws.wave}`;

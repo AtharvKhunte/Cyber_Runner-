@@ -51,9 +51,7 @@ function makeGameState(metaBonus = {}) {
   };
 }
 
-function triggerShake(shake, mag) {
-  shake.magnitude = Math.max(shake.magnitude, mag);
-}
+function triggerShake(shake, mag) { shake.magnitude = Math.max(shake.magnitude, mag); }
 
 function updateShake(shake, dt) {
   if (shake.magnitude < 0.1) { shake.x = 0; shake.y = 0; shake.magnitude = 0; return; }
@@ -67,8 +65,8 @@ function drawGrid(ctx, W, H, px, py) {
   ctx.strokeStyle = GRID_COLOR; ctx.lineWidth = 1;
   const ox = ((px % GRID_CELL) + GRID_CELL) % GRID_CELL;
   const oy = ((py % GRID_CELL) + GRID_CELL) % GRID_CELL;
-  for (let x = -ox; x <= W; x += GRID_CELL) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = -oy; y <= H; y += GRID_CELL) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let x = -ox; x <= W; x += GRID_CELL) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = -oy; y <= H; y += GRID_CELL) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
   ctx.restore();
 }
 
@@ -129,11 +127,11 @@ function drawHealthBar(ctx, hp, maxHp, W) {
 
 function drawRunStats(ctx, run, H) {
   const parts = [];
-  if (run.scoreMultiplier > 1)  parts.push(`×${run.scoreMultiplier} SCORE`);
-  if (run.piercing)              parts.push('PIERCE');
-  if (run.ricochet)              parts.push('RICOCHET');
-  if (run.tripleShot)            parts.push('TRIPLE');
-  if (run.orbitCount > 0)        parts.push(`ORBIT×${run.orbitCount}`);
+  if (run.scoreMultiplier > 1) parts.push(`×${run.scoreMultiplier} SCORE`);
+  if (run.piercing)             parts.push('PIERCE');
+  if (run.ricochet)             parts.push('RICOCHET');
+  if (run.tripleShot)           parts.push('TRIPLE');
+  if (run.orbitCount > 0)       parts.push(`ORBIT×${run.orbitCount}`);
   if (!parts.length) return;
   ctx.save();
   ctx.font = '10px monospace'; ctx.fillStyle = 'rgba(0,255,231,0.28)';
@@ -164,7 +162,6 @@ export default function Game() {
   const [playerHp,       setPlayerHp]       = useState(MAX_PLAYER_HP);
   const [upgradeCostNow, setUpgradeCostNow] = useState(0);
 
-  // All refs — readable inside RAF callbacks without stale closures
   const phaseRef           = useRef('idle');
   const showUpgradesRef    = useRef(false);
   const waveRef            = useRef(1);
@@ -184,20 +181,19 @@ export default function Game() {
   const setUpgradeCostRef  = useRef(setUpgradeCostNow);
   const setEarnedCreditsRef= useRef(setEarnedCredits);
 
-  useEffect(() => { audioRef.current = audio; },             [audio]);
-  useEffect(() => { addCreditsRef.current = addCredits; },   [addCredits]);
+  useEffect(() => { audioRef.current = audio; },                    [audio]);
+  useEffect(() => { addCreditsRef.current = addCredits; },          [addCredits]);
   useEffect(() => { updateHighScoreRef.current = updateHighScore; }, [updateHighScore]);
-  useEffect(() => { spendCreditsRef.current = spendCredits; },[spendCredits]);
+  useEffect(() => { spendCreditsRef.current = spendCredits; },      [spendCredits]);
 
   const activeShip = SHIPS.find(s => s.id === meta.activeShip) || SHIPS[0];
 
-  /* ── startGame ──────────────────────────────────────────────── */
   const startGame = useCallback(() => {
     const metaBonus = buildMetaBonus(meta);
-    gameRef.current          = makeGameState(metaBonus);
-    phaseRef.current         = 'playing';
-    showUpgradesRef.current  = false;
-    waveRef.current          = 1;
+    gameRef.current         = makeGameState(metaBonus);
+    phaseRef.current        = 'playing';
+    showUpgradesRef.current = false;
+    waveRef.current         = 1;
     setPhaseRef.current('playing');
     setScoreRef.current(0);
     setWaveRef.current(1);
@@ -210,23 +206,32 @@ export default function Game() {
     setEarnedCreditsRef.current(0);
   }, [meta]);
 
-  /* ── pickUpgrade ────────────────────────────────────────────── */
   const pickUpgrade = useCallback((upgrade) => {
     const gs = gameRef.current; if (!gs) return;
     const cost = upgradeCost(waveRef.current);
     if (cost > 0) spendCreditsRef.current(cost);
     upgrade.apply(gs.run);
     gs.run.pickedUpgrades.push(upgrade.id);
-    showUpgradesRef.current = false;
-    setShowUpgradesRef.current(false);
+
+    // Advance to next wave
     const ws = gs.wave;
-    ws.phase = 'announce'; ws.phaseTimer = 2.5;
+    ws.wave       += 1;
+    ws.phase       = 'announce';
+    ws.phaseTimer  = 2.5;
+    ws.quota       = 0;
+    ws.spawnTimer  = 0;
+    ws.bossSpawned = false;
     ws.announcement = isBossWave(ws.wave) ? `⚠ BOSS WAVE ${ws.wave} ⚠` : `WAVE ${ws.wave}`;
+
+    waveRef.current = ws.wave;
+    setWaveRef.current(ws.wave);
     setAnnouncementRef.current(ws.announcement);
     setWavePhaseRef.current('announce');
+
+    showUpgradesRef.current = false;
+    setShowUpgradesRef.current(false);
   }, []);
 
-  /* ── Keyboard shortcuts ─────────────────────────────────────── */
   useEffect(() => {
     const onKey = (e) => {
       if ((phaseRef.current === 'idle' || phaseRef.current === 'dead') &&
@@ -249,7 +254,6 @@ export default function Game() {
 
   const toggleMute = useCallback(() => { setMuted(!audio.toggle()); }, [audio]);
 
-  /* ── handlePlayerHit — uses only stable refs ────────────────── */
   const handlePlayerHit = useCallback((p, pu, ps, gs, sfx, ws) => {
     if (consumeShieldHit(pu)) {
       triggerShake(gs.shake, 10);
@@ -273,12 +277,9 @@ export default function Game() {
     }
   }, []);
 
-  /* ══════════════════════════════════════════════════════════════
-     UPDATE — fixed 60 Hz tick
-  ══════════════════════════════════════════════════════════════ */
   const update = useCallback((dt) => {
     if (phaseRef.current !== 'playing') return;
-    if (showUpgradesRef.current) return;          // paused during upgrade pick
+    if (showUpgradesRef.current) return;
     const canvas = canvasRef.current; if (!canvas) return;
     const gs = gameRef.current; if (!gs) return;
 
@@ -294,19 +295,16 @@ export default function Game() {
 
     if (!p.initialised) { p.x = p.px = W / 2; p.y = p.py = H / 2; p.initialised = true; }
 
-    // Star field
     if (!gs.starField) {
       gs.starField = makeStarField(W, H);
       gs.starField.lastPX = p.x; gs.starField.lastPY = p.y;
     }
     updateStarField(gs.starField, p.x, p.y, dt, W, H);
-
     updateShake(gs.shake, dt);
     updateRunState(run, pu, dt);
 
     if (p.invincibleTimer > 0) p.invincibleTimer -= dt;
 
-    // Movement
     p.px = p.x; p.py = p.y;
     const speed = currentPlayerSpeed(pu, BASE_PLAYER_SPEED + run.speedBonus);
     p.vx = inp.x * speed; p.vy = inp.y * speed;
@@ -315,7 +313,6 @@ export default function Game() {
     p.x = Math.max(PAD, Math.min(W - PAD, p.x));
     p.y = Math.max(PAD, Math.min(H - PAD, p.y));
 
-    // Heading
     if (Math.abs(p.vx) > 1 || Math.abs(p.vy) > 1) {
       const target = Math.atan2(p.vy, p.vx);
       const da = target - p.angle;
@@ -323,7 +320,6 @@ export default function Game() {
       p.angle += wrapped * Math.min(dt * 12, 1);
     }
 
-    // Pulse + nav + trail
     const moving = Math.abs(inp.x) > 0.05 || Math.abs(inp.y) > 0.05;
     p.pulsePhase = (p.pulsePhase + dt * (moving ? 8 : 3)) % (Math.PI * 2);
     p.navPhase   = (p.navPhase + dt * 3.5) % (Math.PI * 2);
@@ -336,14 +332,10 @@ export default function Game() {
       );
     }
 
-    // Wave state machine
+    // Wave machine
     const wr = updateWave(ws, dt, gs.enemies.enemies.length);
     if (wr.spawnNormal) spawnNormalEnemy(gs.enemies, W, H, ws.wave);
-    if (wr.spawnBoss) {
-      spawnBoss(gs.enemies, W);
-      setIsBossRef.current(true);
-      triggerShake(gs.shake, 12);
-    }
+    if (wr.spawnBoss) { spawnBoss(gs.enemies, W); setIsBossRef.current(true); triggerShake(gs.shake, 12); }
     if (wr.waveClear) {
       setWavePhaseRef.current('clear');
       setIsBossRef.current(false);
@@ -371,7 +363,6 @@ export default function Game() {
     );
     if (gs.bullets.bullets.length > prevCount) sfx.shoot();
 
-    // Ricochet
     if (run.ricochet) {
       for (const b of gs.bullets.bullets) {
         if (!b.bounced) {
@@ -381,7 +372,7 @@ export default function Game() {
       }
     }
 
-    // Orbit bullets
+    // Orbit
     updateOrbit(gs.orbit, run.orbitCount, p.x, p.y, dt);
     if (run.orbitCount > 0) {
       const or = checkOrbitCollisions(gs.orbit, gs.enemies.enemies);
@@ -397,12 +388,12 @@ export default function Game() {
       }
     }
 
-    // Enemy movement + return new enemy bullets
+    // Enemy movement + firing
     const newEBullets = updateEnemies(gs.enemies, p.x, p.y, ws.wave, dt);
     addEnemyBullets(gs.enemyBullets, newEBullets);
     updateEnemyBullets(gs.enemyBullets, dt, W, H);
 
-    // Player bullet × enemy collision
+    // Player bullet × enemy
     const { scoreDelta, bullets: liveBullets, enemies: liveEnemies, killedPositions } =
       checkBulletEnemyCollisions(gs.bullets.bullets, gs.enemies.enemies, run.bulletDamage, run.piercing);
     if (scoreDelta > 0) {
@@ -420,7 +411,7 @@ export default function Game() {
     }
 
     // Power-ups
-    const pur = updatePowerUps(pu, p.x, p.y, gs.score, dt, run.magnetRange);
+    const pur = updatePowerUps(pu, p.x, p.y, gs.score, dt);
     if (pur.nukeTriggered) {
       gs.enemies.enemies.forEach(e => ps.emitEnemyExplosion(e.x, e.y, e.radius));
       gs.score += gs.enemies.enemies.length * 10;
@@ -432,21 +423,16 @@ export default function Game() {
 
     ps.update(dt);
 
-    // Hit detection — enemy bullets
+    // Hit detection
     if (p.invincibleTimer <= 0 && checkEnemyBulletPlayerCollision(gs.enemyBullets, p.x, p.y, PLAYER_RADIUS)) {
       handlePlayerHit(p, pu, ps, gs, sfx, ws);
     }
-
-    // Hit detection — enemy body contact
     if (p.invincibleTimer <= 0 && checkPlayerEnemyCollision(p.x, p.y, gs.enemies.enemies)) {
       handlePlayerHit(p, pu, ps, gs, sfx, ws);
     }
 
   }, [inputRef, handlePlayerHit]);
 
-  /* ══════════════════════════════════════════════════════════════
-     RENDER — once per visual frame
-  ══════════════════════════════════════════════════════════════ */
   const render = useCallback((ctx, alpha) => {
     const canvas = canvasRef.current; if (!canvas) return;
     const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -487,50 +473,41 @@ export default function Game() {
     <div className={styles.gameWrapper}>
       <canvas ref={canvasRef} className={styles.canvas} aria-label="Cyber-Runner" />
 
-      {/* HUD bar */}
       <header className={styles.hudBar}>
         <span className={styles.hudLeft}>
           <span className={styles.hudLabel}>SCORE</span>
-          <span className={styles.hudValue}>{String(score).padStart(6, '0')}</span>
+          <span className={styles.hudValue}>{String(score).padStart(6,'0')}</span>
         </span>
         <span className={styles.hudCenter}>
-          <span className={`${styles.waveLabel} ${bossWave && phase === 'playing' ? styles.bossLabel : ''}`}>
-            {phase === 'playing' ? (bossWave ? `⚠ BOSS WAVE ${wave}` : `WAVE ${wave}`) : 'CYBER-RUNNER'}
+          <span className={`${styles.waveLabel} ${bossWave && phase==='playing' ? styles.bossLabel : ''}`}>
+            {phase==='playing' ? (bossWave ? `⚠ BOSS WAVE ${wave}` : `WAVE ${wave}`) : 'CYBER-RUNNER'}
           </span>
         </span>
         <span className={styles.hudRight}>
           <span className={styles.hudLabel}>BEST</span>
-          <span className={styles.hudValue}>{String(meta.highScore).padStart(6, '0')}</span>
+          <span className={styles.hudValue}>{String(meta.highScore).padStart(6,'0')}</span>
         </span>
       </header>
 
-      {/* Util buttons */}
       <div className={styles.utilButtons}>
-        <button className={styles.utilBtn} onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
-          {muted ? '🔇' : '🔊'}
-        </button>
-        <button className={styles.utilBtn} onClick={toggleFullscreen} aria-label="Fullscreen">⛶</button>
+        <button className={styles.utilBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
+        <button className={styles.utilBtn} onClick={toggleFullscreen}>⛶</button>
       </div>
 
-      {/* Wave banner */}
-      {phase === 'playing' && (wavePhase === 'announce' || wavePhase === 'clear') && !showUpgrades && (
+      {phase==='playing' && (wavePhase==='announce' || wavePhase==='clear') && !showUpgrades && (
         <div className={`${styles.waveBanner} ${bossWave ? styles.bossBanner : ''}`}>
-          {wavePhase === 'clear' ? '✓ WAVE CLEAR' : announcement}
+          {wavePhase==='clear' ? '✓ WAVE CLEAR' : announcement}
         </div>
       )}
 
-      {/* Mobile fire button */}
-      {phase === 'playing' && (
-        <button
-          className={styles.fireBtn}
+      {phase==='playing' && (
+        <button className={styles.fireBtn}
           onPointerDown={() => { touchFireRef.current = true; }}
           onPointerUp={()   => { touchFireRef.current = false; }}
           onPointerLeave={() => { touchFireRef.current = false; }}
-          aria-label="Fire"
         >🔥</button>
       )}
 
-      {/* Upgrade screen */}
       {showUpgrades && (
         <UpgradeScreen
           upgrades={pendingUpgrades}
@@ -542,7 +519,6 @@ export default function Game() {
         />
       )}
 
-      {/* Shop */}
       {showShop && (
         <ShopScreen
           meta={meta}
@@ -553,56 +529,48 @@ export default function Game() {
         />
       )}
 
-      {/* Start / Idle screen */}
-      {phase === 'idle' && !showShop && (
+      {phase==='idle' && !showShop && (
         <div className={styles.overlay}>
           <div className={`${styles.overlayCard} ${styles.startCard}`}>
             <p className={styles.overlayEyebrow}>INITIALISING SYSTEMS</p>
             <h1 className={`${styles.overlayTitle} ${styles.startTitle}`}>CYBER-RUNNER</h1>
-            <p style={{ color:'#ffe600', fontFamily:'monospace', fontSize:'13px', letterSpacing:'0.1em' }}>
+            <p style={{color:'#ffe600',fontFamily:'monospace',fontSize:'13px',letterSpacing:'0.1em'}}>
               ⬡ {meta.credits} CREDITS
             </p>
             <ul className={styles.controls}>
               <li><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Move</li>
               <li><kbd>Space</kbd> / 🔥 Fire</li>
-              <li>3 HP · enemies fire back from wave 2</li>
+              <li>3 HP · enemies fire back</li>
               <li>Boss every 5 waves · enrages at 40% HP</li>
             </ul>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center' }}>
+            <div style={{display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center'}}>
               <button className={styles.restartBtn} onClick={startGame} autoFocus>START GAME</button>
-              <button
-                className={styles.restartBtn}
-                style={{ background:'rgba(255,230,0,0.1)', borderColor:'rgba(255,230,0,0.5)', color:'#ffe600' }}
-                onClick={() => setShowShop(true)}
-              >⬡ SHOP</button>
+              <button className={styles.restartBtn}
+                style={{background:'rgba(255,230,0,0.1)',borderColor:'rgba(255,230,0,0.5)',color:'#ffe600'}}
+                onClick={() => setShowShop(true)}>⬡ SHOP</button>
             </div>
             <p className={styles.overlayHint}>or press Enter / Space</p>
             {meta.highScore > 0 && (
-              <p className={styles.overlayHighScore}>BEST <strong>{String(meta.highScore).padStart(6, '0')}</strong></p>
+              <p className={styles.overlayHighScore}>BEST <strong>{String(meta.highScore).padStart(6,'0')}</strong></p>
             )}
           </div>
         </div>
       )}
 
-      {/* Game Over */}
-      {phase === 'dead' && (
+      {phase==='dead' && (
         <div className={styles.overlay}>
           <div className={styles.overlayCard}>
             <p className={styles.overlayEyebrow}>SYSTEM FAILURE</p>
             <h1 className={styles.overlayTitle}>GAME OVER</h1>
-            <p className={styles.overlayScore}>SCORE <strong>{String(score).padStart(6, '0')}</strong></p>
+            <p className={styles.overlayScore}>SCORE <strong>{String(score).padStart(6,'0')}</strong></p>
             {score >= meta.highScore && score > 0 && <p className={styles.newRecord}>✦ NEW RECORD ✦</p>}
             <p className={styles.overlayScore}>REACHED WAVE <strong>{wave}</strong></p>
-            <p className={styles.overlayScore} style={{ color:'#ffe600' }}>
-              +{earnedCredits} CREDITS EARNED
-            </p>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center' }}>
+            <p className={styles.overlayScore} style={{color:'#ffe600'}}>+{earnedCredits} CREDITS EARNED</p>
+            <div style={{display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center'}}>
               <button className={styles.restartBtn} onClick={startGame} autoFocus>PLAY AGAIN</button>
-              <button
-                className={styles.restartBtn}
-                style={{ background:'rgba(255,230,0,0.1)', borderColor:'rgba(255,230,0,0.5)', color:'#ffe600' }}
-                onClick={() => setShowShop(true)}
-              >⬡ SHOP</button>
+              <button className={styles.restartBtn}
+                style={{background:'rgba(255,230,0,0.1)',borderColor:'rgba(255,230,0,0.5)',color:'#ffe600'}}
+                onClick={() => setShowShop(true)}>⬡ SHOP</button>
             </div>
             <p className={styles.overlayHint}>or press Enter / Space</p>
           </div>
